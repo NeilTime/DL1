@@ -61,18 +61,14 @@ class MLP(nn.Module):
         #######################
         super(MLP, self).__init__()
         self.layers = nn.ModuleList()
-        input = n_inputs
-        for output in n_hidden:
-            layer = nn.Linear(input, output)
+        layer_sizes = [n_inputs] + n_hidden + [n_classes]
+
+        for i in range(len(layer_sizes) - 1):
+            layer = nn.Linear(layer_sizes[i], layer_sizes[i+1])
             nn.init.kaiming_normal_(layer.weight)
             self.layers.append(layer)
-            if use_batch_norm:
-                self.layers.append(nn.BatchNorm1d(output))
-            self.layers.append(nn.ELU())
-            input = output
-        layer = nn.Linear(input, n_classes)
-        nn.init.kaiming_normal_(layer.weight)
-        self.layers.append(layer)
+            if i < len(n_hidden):
+                self.layers.append(nn.ELU())
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -98,7 +94,7 @@ class MLP(nn.Module):
             x = x.reshape(x.shape[0], -1)
         out = x
         for layer in self.layers:
-            x = layer(x)
+            out = layer(out)
         #######################
         # END OF YOUR CODE    #
         #######################

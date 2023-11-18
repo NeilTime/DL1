@@ -117,15 +117,13 @@ def evaluate_model(model, data_loader, num_classes=10):
     #######################
     model.eval()
     with torch.no_grad():
-      data_iter = iter(data_loader)
-      preds = np.empty((0, num_classes))
-      t = np.array([])
-      for data, target in data_iter:
-          preds = np.vstack((preds, model.forward(data).detach().numpy()))
-          t = np.hstack((t,target))
-      cm = confusion_matrix(preds, t)
-      metrics = confusion_matrix_to_metrics(cm, 1)
-      metrics["ConfMat"] = cm
+        conf_matrix = np.zeros((num_classes, num_classes))
+
+        for x, y in data_loader:
+            logits = model.forward(x)
+            conf_matrix += confusion_matrix(logits, y)
+
+        metrics = confusion_matrix_to_metrics(conf_matrix)
     model.train()
     #######################
     # END OF YOUR CODE    #
@@ -199,31 +197,30 @@ def train(hidden_dims, lr, use_batch_norm, batch_size, epochs, seed, data_dir):
     best_model = None
     
     model.train()
-    evaluate_model(model, cifar10_loader["validation"], 10)
+    evaluate_model(model, cifar10_loader["validation"], num_classes=n_classes)
     for epoch in range(epochs):
         print("Epoch: " + str(epoch + 1))
         loss_list = []
-        train_iter = iter(cifar10_loader["train"])
 
-        for data, targets in train_iter:
-            data, targets = data.reshape(-1, n_inputs).to(device), targets.to(device)
+        for x, y in tqdm(cifar10_loader['train']):
+            x, y = x.to(device), y.to(device)
 
             optimizer.zero_grad()
-            outputs = model(data)
-            loss = loss_module(outputs, targets)
+            outputs = model(x)
+            loss = loss_module(outputs, y)
             loss_list.append(loss.item())
             
             loss.backward()
             optimizer.step()
 
-        global_loss_list.append(loss)
-        val_accuracies.append(evaluate_model(model, cifar10_loader["validation"], 10)["accuracy"])
+        global_loss_list.append(np.mean(np.array(loss_list)))
+        val_accuracies.append(evaluate_model(model, cifar10_loader["validation"], num_classes=n_classes)["accuracy"])
         if val_accuracies[-1]>best_val_accuracy:
             best_val_accuracy = val_accuracies[-1]
             best_model = deepcopy(model)
 
     test_accuracy = evaluate_model(best_model, cifar10_loader["test"], num_classes=n_classes)['accuracy']
-    logging_info = loss_list
+    logging_info = global_loss_list
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -258,6 +255,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
     kwargs = vars(args)
 
-    train(**kwargs)
+    model, val_accuracies, test_accuracy, logging_dict = train(**kwargs)
     # Feel free to add any additional functions, such as plotting of the loss curve here
-    
+    import matplotlib.pyplot as plt
+    print(val_accuracies)
+    print(test_accuracy)
+    plt.plot(range(1,len(logging_dict)+1), logging_dict)
+    plt.title("Average loss per epoch")
+    plt.xlabel("Epoch")
+    plt.ylabel("Average loss")
+    plt.show()

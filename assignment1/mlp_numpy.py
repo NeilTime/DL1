@@ -83,9 +83,7 @@ class MLP(object):
         # PUT YOUR CODE HERE  #
         #######################
         if x.ndim > 2:
-            print(x.shape)
             x = x.reshape(x.shape[0], -1)
-        print(x.shape)
         out = x
         for layer in self.layers:
             out = layer.forward(out)

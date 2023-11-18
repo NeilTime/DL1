@@ -163,8 +163,6 @@ def train(hidden_dims, lr, batch_size, epochs, seed, data_dir):
     # Set the random seeds for reproducibility
     np.random.seed(seed)
     torch.manual_seed(seed)
-    import ssl
-    ssl._create_default_https_context = ssl._create_unverified_context
 
     ## Loading the dataset
     cifar10 = cifar10_utils.get_cifar10(data_dir)
